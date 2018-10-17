@@ -4,15 +4,13 @@
 /* Linked List Exercise
 
 TO-DO:
-- Node struct (DONE)
-- Push at beginning of list (DONE)
-- Push at end of list (DONE)
-- Pop (DONE)
-- List All (DONE)
-- Removing last item of list
-- Removing a specific index in the list
-- Create docker container
-- Add profiling
++ Node struct (DONE)
++ Push at beginning of list (DONE)
++ Push at end of list (DONE)
++ Pop (DONE)
++ List All (DONE)
++ Create docker container
++ Add profiling
 
 */
     
