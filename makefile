@@ -1,4 +1,6 @@
-mainmake: main.c
-	gcc -g -o main main.c
+build: Dockerfile
+	docker build -t go-c -f Dockerfile .
+run:
+	docker run --interactive -t go-c sh
 clean:
-	rm main
+	docker rmi $(docker images -f "dangling=true" q)
