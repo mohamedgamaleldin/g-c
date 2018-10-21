@@ -2,11 +2,10 @@
 
 Learning C.
 
-#### To-do
-+ Node struct (DONE)
-+ Push at beginning of list (DONE)
-+ Push at end of list (DONE)
-+ Pop (DONE)
-+ List All (DONE)
-+ Create docker container
-+ Add profiling
+#### TO-DO:
++ Implement DLL (struct def, push, pop, print)
++ Add hashmap
++ Implement cache struct
++ Add meta data (hit ratio, latency)
++ Add get/set functions
++ Write unit tests
