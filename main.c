@@ -2,13 +2,12 @@
 #include <stdlib.h>
 
 // TO-DO:
-// + Mock data file
-// + Create cache struct
-// + Add cache buffer
-// + Add meta data (hit ratio, latency)
-// + Add hashmap
-// + Add get/set functions
-// + Write unit tests
+// 1- Create hashmap with no-logic hashcode
+// 2- Mock data
+// 3- Implement open addressing with linear probing for the hash
+// 4- Implement a hashcode function
+
+typedef enum { false, true } bool;
 
 typedef struct node {
     int data;
@@ -17,6 +16,7 @@ typedef struct node {
 } Node;
 
 Node* head; // global variable - pointer to head of the DLL.
+Node* tail; // global variable - pointer to tail of the DLL.
 
 // GetNewNode creates a new node initialized with data and NULL for prev, next
 Node* GetNewNode(int data) {
@@ -30,33 +30,58 @@ Node* GetNewNode(int data) {
     return newNode;
 }
 
-// Push adds a new node to the beginning of the list
-int Push(int data) {
-    Node *node;
+// isEmpty returns whether the DLL is empty
+bool isEmpty() {
+    if(head == NULL) return true;
+    return false;
+}
+
+// AddFirst adds a new node to the start of the list
+int AddFirst(int data) {
     // create new node with err check if out of memory
+    Node *node;
     if((node = GetNewNode(data)) == NULL) return -1; 
 
-    // if DLL was not empty, add new node to beginning of list, else skip and initialize head to new node
-    if(head != NULL) {
-        head->prev = node;
+    // if DLL is empty, add new node as head and tail
+    if(isEmpty()) {
+        head = tail = node;
+    } else { // add new node to start of list
         node->next = head;
+        head->prev = node;
+        head = node;
     }
-
-    head = node;
 
     return 0;
 }
 
-// Pop removes the top most node from the list
-int Pop() {
+// AddLast adds a new node to the end of the list
+int AddLast(int data) {
+    // create new node with err check if out of memory
+    Node *node;
+    if((node = GetNewNode(data)) == NULL) return -1; 
+
+    // if DLL is empty, add new node as head and tail
+    if(isEmpty()) {
+        head = tail = node;
+    } else { // add new node to end of list
+        tail->next = node;
+        node->prev = tail;
+        tail = node;
+    }
+
+    return 0;
+}
+
+// DeleteFirst removes the first node from the list
+int DeleteFirst() {
     // no nodes in list (list is empty)
-    if(head == NULL) return -1;
+    if(isEmpty()) return -1;
 
     // one node in list
     if(head->next == NULL) {
         free(head);
-        head = NULL;
-    } else {
+        head = tail = NULL;
+    } else { // remove first node from list and update head
         Node *node = head->next;
         free(head);
         node->prev = NULL;
@@ -66,8 +91,35 @@ int Pop() {
     return 0;
 }
 
+
+// DeleteLast removes the last node from the list
+int DeleteLast() {
+    // no nodes in list (list is empty)
+    if(isEmpty()) return -1;
+
+    // one node in list
+    if(tail->prev == NULL) {
+        free(tail);
+        head = tail = NULL;
+    } else { // remove last node from list and update tail
+        Node *node = tail->prev;
+        free(tail);
+        node->next = NULL;
+        tail = node;
+    }
+ 
+    return 0;
+}
+
+
 // Print displays for each node in the list: data, memory address of current, prev and next nodes
 void Print() {
+    // check if list is empty
+    if(isEmpty()) {
+        printf("Empty list.\n");
+        return;
+    }
+
     Node *node = head;
     int n = 0;
 
@@ -82,22 +134,25 @@ void Print() {
 
 // DeleteList pops all nodes starting from the head until the list is empty
 void DeleteList() {
-    while (-1 != Pop());
+    while (-1 != DeleteFirst());
 }
 
 int main() {
     // driver code to test the DLL
-    head = NULL;
+    head = tail = NULL;
 
-    printf("Push returned: %d\n", Push(1));
-    printf("Push returned: %d\n", Push(2));
-    printf("Push returned: %d\n", Push(3));
+    AddLast(1);
+    AddLast(2);
+    AddLast(3);
+    DeleteLast();
+    DeleteLast();
+    Print();
+    printf("Head: %p\nTail: %p\n", head, tail);
 
+    AddFirst(0);
+    DeleteLast();
     Print();
-    Pop();
-    Print();
-    DeleteList();
-    Print();
+    printf("Head: %p\nTail: %p\n", head, tail);
 
     return 0;
 }
