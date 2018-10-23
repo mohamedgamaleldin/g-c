@@ -1,100 +1,53 @@
-/* open questions:
-- chaining or open addressing? (what has better performance?)
-- how to choose the optimal hash function?
-- when to rehash?
-*/
-
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <assert.h>
-#include "hashmap.h"
 
-/* overhead parameter that determines both space and search costs */
-/* must be strictly greater than 1 */
-#define OVERHEAD (1.1)
-#define NULL_ID (-1)
+#define INITIAL_SIZE 100
 
-struct id_list {
-    int size;
-    int ids[1];         /* we'll actually malloc more space than this */
-};
+// The value of a hashmap key can be any type
+typedef void *any_t;
 
-IDList
-IDListCreate(int n, int unsorted_id_list[])
-{
-    IDList list;
-    int size;
-    int i;
-    int probe;
+// The type of the map is abstracted from the client - it is an internally maintained data structure
+typedef any_t map_t;
 
-    size = (int) (n * OVERHEAD + 1);
+// A hashmap_item is a key-value type. Defined as a pointer to not accidentally pass by value and inefficiently use memory
+typedef struct _hashmap_item {
+	char *key;
+	any_t data;
+} *hashmap_item;
 
-    list = malloc(sizeof(*list) + sizeof(int) * (size-1));
-    if(list == 0) return 0;
+// A hashmap is an array of hashmap_items + variables to hold the current size and max size
+typedef struct _hashmap {
+	unsigned int size;
+	unsigned int map_size;
+	hashmap_item items;
+} *hashmap;
 
-    /* else */
-    list->size = size;
+// Allocates memory for a new hashmap with INITIAL_SIZE
+map_t hashmap_new() {
+	hashmap map = malloc(sizeof(hashmap));
+	if(map == NULL) return NULL;
 
-    /* clear the hash table */
-    for(i = 0; i < size; i++) {
-        list->ids[i] = NULL_ID;
-    }
+	map->items = calloc(INITIAL_SIZE, sizeof(hashmap_item));
+	if(map->items == NULL) return NULL;
 
-    /* load it up */
-    for(i = 0; i < n; i++) {
+	map->map_size = INITIAL_SIZE;
 
-        assert(unsorted_id_list[i] >= MIN_ID);
-        assert(unsorted_id_list[i] <= MAX_ID);
-
-        /* hashing with open addressing by division */
-        /* this MUST be the same pattern as in IDListContains */
-        for(probe = unsorted_id_list[i] % list->size;
-            list->ids[probe] != NULL_ID;
-            probe = (probe + 1) % list->size);
-        
-        assert(list->ids[probe] == NULL_ID);
-
-        list->ids[probe] = unsorted_id_list[i];
-    }
-
-    return list;
+	return map;
 }
 
-void
-IDListDestroy(IDList list)
-{
-    free(list);
-}
-
-int
-IDListContains(IDList list, int id)
-{
-    int probe;
-
-    /* this MUST be the same pattern as in IDListCreate */
-    for(probe = id % list->size;
-        list->ids[probe] != NULL_ID;
-        probe = (probe + 1) % list->size) {
-        if(list->ids[probe] == id) {
-            return 1;
-        }
-    }
-
-    return 0;
+// Frees the hashmap from memory
+void hashmap_free(map_t map) {
+	// need to cast to access items, since map_t is a void pointer
+	hashmap m = (hashmap) map;
+	free(m->items);
+	free(m);
 }
 
 int main() {
-	int test_list[100];
-
-	for(int i=0;i<100;i++) {
-		test_list[i] = i;
-	}
-
-	IDList list = IDListCreate(100, test_list);
-
-	printf("%d\n", IDListContains(list, 50));
-
-	IDListDestroy(list);
+	map_t map = hashmap_new();
+	assert(map != NULL);
+	hashmap_free(map);
 
 	return 0;
 }
