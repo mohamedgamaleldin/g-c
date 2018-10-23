@@ -1,6 +1,8 @@
 build: Dockerfile
 	docker build -t go-c -f Dockerfile .
 run:
-	docker run --interactive -t go-c sh
+	gcc -o g-hash g-hash.c
+	./g-hash
 clean:
-	docker rmi $(docker images -f "dangling=true" q)
+	docker rm -f $(docker ps -a)
+	docker rmi -f $(docker images -f "dangling=true" q)
