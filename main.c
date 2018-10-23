@@ -141,18 +141,7 @@ int main() {
     // driver code to test the DLL
     head = tail = NULL;
 
-    AddLast(1);
-    AddLast(2);
-    AddLast(3);
-    DeleteLast();
-    DeleteLast();
-    Print();
-    printf("Head: %p\nTail: %p\n", head, tail);
-
-    AddFirst(0);
-    DeleteLast();
-    Print();
-    printf("Head: %p\nTail: %p\n", head, tail);
-
     return 0;
 }
+
+

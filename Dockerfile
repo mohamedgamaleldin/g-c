@@ -30,5 +30,5 @@ WORKDIR /ggg
 
 COPY main.c .
 
-RUN gcc -o main main.c -fno-omit-frame-pointer -Wl,--no-as-needed,-lprofiler,--as-needed && \
-	CPUPROFILE=prof.out ./main
+RUN gcc -o main main.c -fno-omit-frame-pointer -Wl,--no-as-needed,-ltcmalloc,--as-needed && \
+	HEAPPROFILE=main.hprof ./main
