@@ -305,11 +305,26 @@ int main() {
 	assert(map != NULL);
 
 	hashmap_put(map, "Mohamed", "Gamal");
-	hashmap_put(map, "Mohamed", "Gamal");
+	hashmap_put(map, "Mohamad", "Abdou");
+	hashmap_put(map, "Omar", "Mohamed");
+	hashmap_put(map, "Karim", "Magdy");
+	hashmap_put(map, "Bishoy", "Bashai");
+	hashmap_put(map, "Ahmad", "Awad");
+	hashmap_put(map, "Ahmed", "Farag");
+	hashmap_put(map, "Amira", "Mohei");
+	hashmap_put(map, "Christian", "Kemsies");
+	hashmap_put(map, "Alex", "Hashemakis");
+	hashmap_put(map, "Meg", "Chanta");
+	hashmap_put(map, "Irfan", "Baig");
 
-	any_t value;
-	int x = hashmap_get(map, "Mohamed", &value);
-	printf("%s\n", value);
+	for(int i=0;i<map->map_size;i++) {
+		printf("i: %d\n", i);
+		list_print(&map->items[i]);
+	}
+
+	any_t lastName;
+	hashmap_get(map, "Mohamed", &lastName);
+	printf("\n\nMohamed %s\n", lastName);
 
 	hashmap_free(map);
 	return 0;
