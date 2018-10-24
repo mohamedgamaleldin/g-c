@@ -6,6 +6,7 @@
 #define INITIAL_SIZE (256)
 #define MAX_CHAIN_LENGTH (8)
 #define MAP_MISSING -3	/* Item doesn't exist in map */
+#define MAP_FULL -2 	/* Hashmap is full */
 #define MAP_OK 0		/* OK */
 
 // The value of a hashmap key can be any type
@@ -37,6 +38,7 @@ map_t hashmap_new() {
 	if(map->items == NULL) return NULL;
 
 	map->map_size = INITIAL_SIZE;
+	map->size = 0;
 
 	return map;
 }
@@ -212,9 +214,65 @@ int hashmap_get(map_t m, char* key, any_t *arg) {
 	return MAP_MISSING;
 }
 
+/*
+ * Return the integer of the location in data
+ * to store the point to the item, or MAP_FULL.
+ */
+int hashmap_hash(map_t in, char* key){
+	int curr;
+	int i;
+
+	/* Cast the hashmap */
+	hashmap m = (hashmap) in;
+
+	/* If full, return immediately */
+	if(m->size >= (m->map_size/2)) return MAP_FULL;
+
+	/* Find the best index */
+	curr = hashmap_hash_int(m, key);
+
+	/* Linear probing */
+	for(i = 0; i< MAX_CHAIN_LENGTH; i++){
+		if(m->items[curr].in_use == 0)
+			return curr;
+
+		if(m->items[curr].in_use == 1 && (strcmp(m->items[curr].key,key)==0))
+			return curr;
+
+		curr = (curr + 1) % m->map_size;
+	}
+
+	return MAP_FULL;
+}
+
+// Put item into hashmap.
+int hashmap_put(map_t m, char* key, any_t value){
+	int index;
+
+	/* Cast the hashmap */
+	hashmap map = (hashmap) m;
+
+	/* Find a place to put our value */
+	index = hashmap_hash(map, key);
+
+	/* Set the data */
+	map->items[index].data = value;
+	map->items[index].key = key;
+	map->items[index].in_use = 1;
+	map->size++; 
+
+	return MAP_OK;
+}
+
 int main() {
-	map_t map = hashmap_new();
+	hashmap map = (hashmap) hashmap_new();
 	assert(map != NULL);
+
+	assert(hashmap_put(map, "Mohamed", "Gamal") == MAP_OK);
+	any_t value;
+	hashmap_get(map, "Mohamed", &value);
+	printf("%s\n", value);
+
 	hashmap_free(map);
 
 	return 0;
