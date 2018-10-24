@@ -4,6 +4,7 @@
 #include <string.h>
 
 #define INITIAL_SIZE (10)
+#define MAP_ERROR -4	/* Misc. error in hashmap_put */
 #define MAP_MISSING -3	/* Item doesn't exist in map */
 #define MAP_FULL -2 	/* Hashmap is full */
 #define OMEM -1			/* Failed mem alloc */
@@ -40,7 +41,7 @@ typedef struct _hashmap {
 } hashmap;
 
 // Allocates memory for a new hashmap with INITIAL_SIZE
-int hashmap_new(map_t *m) {
+int hashmap_new(map_t* m) {
 	hashmap *map = malloc(sizeof(hashmap));
 	if(map == NULL) return OMEM;
 
@@ -222,43 +223,53 @@ node* get_new_node(char* key, any_t data) {
 }
 
 // list_find iterates through a DLL and finds a specific key
-bool list_find(DLL* list, char* key, any_t *data)  {
-	if(list_is_empty(list)) return false;
+int list_find(DLL* list, char* key, any_t *data)  {
+	int n = 0;
 
 	node *curr = list->head;
 	while(curr != NULL) {
 		if(strcmp(curr->key, key) == 0) {
 			*data = curr->data;
-			return true;
+			return n;
 		}
 
+		n++;
 		curr = curr->next;
 	}
 
-	return false;
+	return -1;
 }
 
 // list_print displays for each node in the list: key, data, memory address of current, prev and next nodes
 void list_print(DLL* list) {
     // check if list is empty
     if(list_is_empty(list)) {
-        printf("Empty list.\n");
+        printf("empty list.\n\n");
         return;
     }
 
     node *curr = list->head;
     int n = 0;
 
-    printf("\n\n---------- printing nodes in list ----------\n");
+    printf("---------- printing nodes in list ----------\n");
     while(curr != NULL) {
         printf("Node %d:\n\tkey: %s\n\tdata: %s\n\taddress: %p\n\tprev: %p\n\tnext: %p\n\n", n++, curr->key, curr->data, curr, curr->prev, curr->next);
         curr = curr->next;
     }
 
-    printf("---------- end of list ----------\n");
+    printf("---------- end of list ----------\n\n");
 }
 
-// list_add_top adds a new node to the head of the list
+// hashmap_print displays all nodes in each linked list present in the hashmap
+void hashmap_print(map_t m) {
+	hashmap *map = (hashmap *) m;
+	for(int i=0; i<map->map_size; i++) {
+		printf("List #%d\n", i);
+		list_print(&map->items[i]);
+	}
+}
+
+// list_add_head adds a new node to the head of the list
 int list_add_head(DLL* list, char* key, any_t data) {
     // create new node with err check if out of memory
  	node *tmp;
@@ -294,6 +305,19 @@ int list_add_tail(DLL* list, char* key, any_t data) {
     return 0;
 }
 
+// Update node data in given list and index
+bool list_update_node(DLL* list, int index, any_t data) {
+	node *curr = list->head;
+	
+	for(int i=0; i<index; i++) {
+		curr = curr->next;
+		if(curr == NULL) return false;
+	}
+
+	curr->data = data;
+	return true;
+}
+
 // Put function
 int hashmap_put(map_t m, char* key, any_t data) {
 	hashmap *map = (hashmap*) m;
@@ -301,8 +325,17 @@ int hashmap_put(map_t m, char* key, any_t data) {
 	// hash given key to an index
 	int index = hashmap_hash_int(map, key);
 
-	// add new node to top of DLL
-	list_add_head(&map->items[index], key, data);
+	if(list_is_empty(&map->items[index])) {
+		list_add_head(&map->items[index], key, data);
+	} else {
+		any_t discard = NULL;
+		int x = list_find(&map->items[index], key, &discard);
+		if(-1 == x) {
+			list_add_tail(&map->items[index], key, data);
+		} else {
+			if(!list_update_node(&map->items[index], x, data)) return MAP_ERROR;
+		}
+	}
 
 	// increment count of items in cache
 	map->size++;
@@ -315,7 +348,7 @@ int hashmap_get(map_t m, char* key, any_t *data) {
 	hashmap *map = (hashmap*) m;
 	int index = hashmap_hash_int(map, key);
 
-	if(!list_find(&map->items[index], key, data)) return MAP_MISSING;
+	if(-1 == list_find(&map->items[index], key, data)) return MAP_MISSING;
 
 	return MAP_OK;
 }
@@ -323,7 +356,14 @@ int hashmap_get(map_t m, char* key, any_t *data) {
 int main() {
 	map_t map = NULL;
 	int x = hashmap_new(&map);
+	assert(x != OMEM);
 	assert(map != NULL);
+
+	hashmap_put(map, "Mohamed", "Gamal");
+	hashmap_put(map, "Mohamed", "Gamals");
+	hashmap_put(map, "Mohamed", "Gamalz");
+
+	hashmap_print(map);
 
 	hashmap_free(map);
 	return 0;
