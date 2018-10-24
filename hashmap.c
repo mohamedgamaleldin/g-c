@@ -3,11 +3,13 @@
 #include <assert.h>
 #include <string.h>
 
-#define INITIAL_SIZE (256)
-#define MAX_CHAIN_LENGTH (8)
+#define INITIAL_SIZE (10)
 #define MAP_MISSING -3	/* Item doesn't exist in map */
 #define MAP_FULL -2 	/* Hashmap is full */
 #define MAP_OK 0		/* OK */
+
+// Boolean type
+typedef enum { false, true } bool;
 
 // The value of a hashmap key can be any type
 typedef void *any_t;
@@ -15,25 +17,33 @@ typedef void *any_t;
 // The type of the map is abstracted from the client - it is an internally maintained data structure
 typedef any_t map_t;
 
-// A hashmap_item is a key-value type. Defined as a pointer to not accidentally pass by value and inefficiently use memory
-typedef struct _hashmap_item {
+// A node in a doubly linked list
+typedef struct _node {
 	char *key;
-	int in_use;
-	any_t data;
-} *hashmap_item;
+    any_t data;
+    struct _node *next;
+    struct _node *prev;
+} node;
+
+// A hashmap is a map of [key, doubly linked list]
+typedef struct _hashmap_item {
+	node *head;
+	node *tail;
+} hashmap_item, DLL;
 
 // A hashmap is an array of hashmap_items + variables to hold the current size and max size
 typedef struct _hashmap {
 	unsigned int size;
 	unsigned int map_size;
-	hashmap_item items;
-} *hashmap;
+	struct _hashmap_item *items;
+} hashmap;
 
 // Allocates memory for a new hashmap with INITIAL_SIZE
 map_t hashmap_new() {
-	hashmap map = malloc(sizeof(hashmap));
+	hashmap *map = malloc(sizeof(hashmap));
 	if(map == NULL) return NULL;
 
+	// use calloc to initialize the hashmap_items to zero
 	map->items = calloc(INITIAL_SIZE, sizeof(hashmap_item));
 	if(map->items == NULL) return NULL;
 
@@ -46,7 +56,7 @@ map_t hashmap_new() {
 // Frees the hashmap from memory
 void hashmap_free(map_t map) {
 	// need to cast to access items, since map_t is a void pointer
-	hashmap m = (hashmap) map;
+	hashmap *m = (hashmap*) map;
 	free(m->items);
 	free(m);
 }
@@ -170,7 +180,7 @@ unsigned long crc32(const unsigned char *s, unsigned int len)
 }
 
 // The hashing function for a given string (using CRC32)
-unsigned int hashmap_hash_int(hashmap m, char* keystring){
+unsigned int hashmap_hash_int(hashmap *m, char* keystring){
 
     unsigned long key = crc32((unsigned char*)(keystring), strlen(keystring));
 
@@ -190,90 +200,117 @@ unsigned int hashmap_hash_int(hashmap m, char* keystring){
 	return key % m->map_size;
 }
 
-// Get by key. Value is returned in the arg pointer if exists. Function returns either MAP_MISSING or MAP_OK
-int hashmap_get(map_t m, char* key, any_t *arg) {
-	hashmap map = (hashmap) m;
-	
-	// get location of key in hashmap
-	int curr = hashmap_hash_int(map, key);
+// is_list_empty checks whether a given DLL is empty
+bool is_list_empty(DLL* list) {
+	if(list->head == NULL) return true;
+	return false;
+}
 
-	// linear probing
-	for(int i=0; i<MAX_CHAIN_LENGTH; i++) {
-		int in_use = map->items[curr].in_use;
-		if(1 == in_use) {
-			if(strcmp(map->items[curr].key, key) == 0) {
-				*arg = map->items[curr].data;
-				return MAP_OK;
-			}
+// list_get_new_node creates a new node initialized with data and NULL for prev, next
+node* list_get_new_node(char* key, any_t data) {
+    node *newNode = malloc(sizeof(node));
+    if(newNode == NULL) return NULL; // out of memory
+
+    newNode->key = key;
+    newNode->data = data;
+    newNode->prev = NULL;
+    newNode->next = NULL;
+
+    return newNode;
+}
+
+// list_find iterates through a DLL and finds a specific key
+bool list_find(DLL* list, char* key, any_t *data)  {
+	if(is_list_empty(list)) return false;
+
+	node *curr = list->head;
+	while(curr != NULL) {
+		if(strcmp(curr->key, key) == 0) {
+			*data = curr->data;
+			return true;
 		}
 
-		curr = (curr + 1) % map->map_size;
+		curr = curr->next;
 	}
 
-	*arg = NULL;
-	return MAP_MISSING;
+	return false;
 }
 
-/*
- * Return the integer of the location in data
- * to store the point to the item, or MAP_FULL.
- */
-int hashmap_hash(map_t in, char* key){
-	int curr;
-	int i;
+// list_print displays for each node in the list: key, data, memory address of current, prev and next nodes
+void list_print(DLL* list) {
+    // check if list is empty
+    if(is_list_empty(list)) {
+        printf("Empty list.\n");
+        return;
+    }
 
-	/* Cast the hashmap */
-	hashmap m = (hashmap) in;
+    node *curr = list->head;
+    int n = 0;
 
-	/* If full, return immediately */
-	if(m->size >= (m->map_size/2)) return MAP_FULL;
+    printf("\n\n---------- printing nodes in list ----------\n");
+    while(curr != NULL) {
+        printf("Node %d:\n\tkey: %s\n\tdata: %s\n\taddress: %p\n\tprev: %p\n\tnext: %p\n\n", n++, curr->key, curr->data, curr, curr->prev, curr->next);
+        curr = curr->next;
+    }
 
-	/* Find the best index */
-	curr = hashmap_hash_int(m, key);
-
-	/* Linear probing */
-	for(i = 0; i< MAX_CHAIN_LENGTH; i++){
-		if(m->items[curr].in_use == 0)
-			return curr;
-
-		if(m->items[curr].in_use == 1 && (strcmp(m->items[curr].key,key)==0))
-			return curr;
-
-		curr = (curr + 1) % m->map_size;
-	}
-
-	return MAP_FULL;
+    printf("---------- end of list ----------\n");
 }
 
-// Put item into hashmap.
-int hashmap_put(map_t m, char* key, any_t value){
-	int index;
+// list_add adds a new node to the start of the list
+int list_add(DLL* list, char* key, any_t data) {
+    // create new node with err check if out of memory
+ 	node *tmp;
+    if((tmp = list_get_new_node(key, data)) == NULL) return -1; 
 
-	/* Cast the hashmap */
-	hashmap map = (hashmap) m;
+    // if DLL is empty, add new node as head and tail
+    if(is_list_empty(list)) {
+        list->head = list->tail = tmp;
+    } else { // add new node to start of list
+        tmp->next = list->head;
+        list->head->prev = tmp;
+        list->head = tmp;
+    }
 
-	/* Find a place to put our value */
-	index = hashmap_hash(map, key);
+    return MAP_OK;
+}
 
-	/* Set the data */
-	map->items[index].data = value;
-	map->items[index].key = key;
-	map->items[index].in_use = 1;
-	map->size++; 
+// Put function
+int hashmap_put(map_t m, char* key, any_t data) {
+	hashmap *map = (hashmap*) m;
+
+	// hash given key to an index
+	int index = hashmap_hash_int(map, key);
+
+	// add new node to top of DLL
+	list_add(&map->items[index], key, data);
+
+	// increment count of items in cache
+	map->size++;
+
+	return MAP_OK;
+}
+
+// Get function
+int hashmap_get(map_t m, char* key, any_t *data) {
+	hashmap *map = (hashmap*) m;
+	int index = hashmap_hash_int(map, key);
+
+	if(!list_find(&map->items[index], key, data)) return MAP_MISSING;
 
 	return MAP_OK;
 }
 
 int main() {
-	hashmap map = (hashmap) hashmap_new();
+	hashmap *map = (hashmap*) hashmap_new();
 	assert(map != NULL);
 
-	assert(hashmap_put(map, "Mohamed", "Gamal") == MAP_OK);
+	hashmap_put(map, "Mohamed", "Gamal");
+	hashmap_put(map, "Mohamed", "Gamal");
+
 	any_t value;
-	hashmap_get(map, "Mohamed", &value);
+	int x = hashmap_get(map, "Mohamed", &value);
 	printf("%s\n", value);
 
 	hashmap_free(map);
-
 	return 0;
 }
